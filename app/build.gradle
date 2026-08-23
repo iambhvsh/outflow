@@ -1,0 +1,88 @@
+plugins {
+    // Kotlin is compiled by AGP's built-in Kotlin support (no kotlin-android
+    // plugin). Only the Compose compiler plugin is applied explicitly.
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.plugin.compose'
+    id 'com.google.devtools.ksp' version '2.2.10-2.0.2'
+    id 'androidx.room' version '2.6.1'
+}
+
+def versionPropsFile = rootProject.file("version.properties")
+def versionProps = new Properties()
+if (versionPropsFile.canRead()) {
+    versionProps.load(new FileInputStream(versionPropsFile))
+} else {
+    throw new GradleException("Could not read version.properties!")
+}
+
+android {
+    // NOTE: `in` is a hard keyword in Kotlin, so any Kotlin source file placed
+    // under this package must escape it, e.g. `package `in`.iambhvsh.outflow`.
+    // Here in the Gradle DSL these are plain strings, so NO backticks are used
+    // (adding them would make the literal package name contain a backtick).
+    namespace 'in.iambhvsh.outflow'
+    compileSdk 37
+
+    defaultConfig {
+        applicationId 'in.iambhvsh.outflow'
+        minSdk 24
+        targetSdk 37
+        versionCode versionProps['VERSION_CODE'].toInteger()
+        versionName versionProps['VERSION_NAME'].toString()
+
+        ksp {
+            arg("room.schemaLocation", "$projectDir/schemas")
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    // With AGP built-in Kotlin, the Kotlin jvmTarget defaults to
+    // compileOptions.targetCompatibility (17), so no kotlinOptions /
+    // kotlin { compilerOptions } block is required.
+
+    buildFeatures {
+        compose true
+    }
+}
+
+room {
+    schemaDirectory("$projectDir/schemas")
+}
+
+dependencies {
+    // Jetpack Compose Bill of Materials — single source of truth that pins the
+    // versions of every 'androidx.compose.*' artifact declared below.
+    implementation platform('androidx.compose:compose-bom:2026.08.00')
+
+    // Compose UI toolkit (versions come from the BOM).
+    implementation 'androidx.compose.ui:ui'
+    implementation 'androidx.compose.ui:ui-graphics'
+    implementation 'androidx.compose.ui:ui-tooling-preview'
+
+    // Material 3 design primitives.
+    implementation 'androidx.compose.material3:material3'
+    implementation 'androidx.compose.material:material-icons-core'
+
+    // AndroidX core + the Activity <-> Compose bridge (setContent { ... }).
+    implementation 'androidx.core:core-ktx:1.19.0'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.11.0'
+    implementation 'androidx.activity:activity-compose:1.13.0'
+
+    // Debug-only tooling: Layout Inspector support and @Preview rendering.
+    debugImplementation 'androidx.compose.ui:ui-tooling'
+
+    // Room persistence
+    implementation 'androidx.room:room-runtime:2.6.1'
+    implementation 'androidx.room:room-ktx:2.6.1'
+    ksp 'androidx.room:room-compiler:2.6.1'
+}

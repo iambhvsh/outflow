@@ -1,0 +1,12 @@
+# Kotlin source root for package `in.iambhvsh.outflow`.
+#
+# `in` is a reserved (hard) keyword in Kotlin, so when you add .kt files here
+# the package declaration and any imports must escape it with backticks:
+#
+#     package `in`.iambhvsh.outflow
+#
+#     import `in`.iambhvsh.outflow.R
+#
+# (The applicationId / namespace in app/build.gradle are plain strings and are
+# NOT escaped.) This placeholder keeps the empty package directory tracked and
+# can be deleted once real source files exist.
