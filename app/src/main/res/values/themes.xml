@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- What the window wears once the launch screen hands over to Compose. -->
+    <style name="Theme.Outflow" parent="@android:style/Theme.DeviceDefault.NoActionBar">
+        <item name="android:windowBackground">@color/launch</item>
+    </style>
+
+    <!--
+      The launch screen, held until the stored settings have been read so the app never draws a frame
+      in a theme that is about to change. The icon keeps its own white disc, exactly as the launcher
+      draws it, so it reads the same over either background.
+    -->
+    <style name="Theme.Outflow.Launch" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/launch</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="postSplashScreenTheme">@style/Theme.Outflow</item>
+    </style>
+
+</resources>

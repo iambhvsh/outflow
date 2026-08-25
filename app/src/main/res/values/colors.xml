@@ -1,4 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_launcher_background">#FFFFFF</color>
+
+    <!--
+      What the window wears while the app starts, before anything is drawn. It cannot be the theme
+      that was chosen — that is still being read off disk at this point — so it follows the system's
+      light and dark, which is the closest guess available. See values-night.
+    -->
+    <color name="launch">#FFFBFF</color>
 </resources>

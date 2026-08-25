@@ -1,10 +1,17 @@
 package `in`.iambhvsh.outflow.data
 
-import androidx.room.ColumnInfo
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "outflows")
+/**
+ * One flow of money, in or out. Both indices serve the reads in [TransactionDao]: every window is
+ * ordered by [timestamp], and the totals sum one [type] within a window.
+ */
+@Entity(
+    tableName = "outflows",
+    indices = [Index("timestamp"), Index("type", "timestamp")]
+)
 data class TransactionEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,

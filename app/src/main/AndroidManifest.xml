@@ -3,16 +3,19 @@
 
     <application
         android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="false"
         android:usesCleartextTraffic="false"
         android:label="@string/app_name"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
-        
+        android:theme="@style/Theme.Outflow">
+
         <activity
-            android:name=".ui.MainActivity"
+            android:name=".ui.Main"
             android:exported="true"
+            android:theme="@style/Theme.Outflow.Launch"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

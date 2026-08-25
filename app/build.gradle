@@ -1,6 +1,4 @@
 plugins {
-    // Kotlin is compiled by AGP's built-in Kotlin support (no kotlin-android
-    // plugin). Only the Compose compiler plugin is applied explicitly.
     id 'com.android.application'
     id 'org.jetbrains.kotlin.plugin.compose'
     id 'com.google.devtools.ksp' version '2.2.10-2.0.2'
@@ -16,11 +14,7 @@ if (versionPropsFile.canRead()) {
 }
 
 android {
-    // NOTE: `in` is a hard keyword in Kotlin, so any Kotlin source file placed
-    // under this package must escape it, e.g. `package `in`.iambhvsh.outflow`.
-    // Here in the Gradle DSL these are plain strings, so NO backticks are used
-    // (adding them would make the literal package name contain a backtick).
-    namespace 'in.iambhvsh.outflow'
+    namespace = 'in.iambhvsh.outflow'
     compileSdk 37
 
     defaultConfig {
@@ -51,7 +45,7 @@ android {
 
     buildTypes {
         release {
-            signingConfig signingConfigs.release
+            signingConfig = signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
@@ -61,12 +55,10 @@ android {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
-    // With AGP built-in Kotlin, the Kotlin jvmTarget defaults to
-    // compileOptions.targetCompatibility (17), so no kotlinOptions /
-    // kotlin { compilerOptions } block is required.
 
     buildFeatures {
-        compose true
+        compose = true
+        buildConfig = true
     }
 }
 
@@ -75,8 +67,6 @@ room {
 }
 
 dependencies {
-    // Jetpack Compose Bill of Materials — single source of truth that pins the
-    // versions of every 'androidx.compose.*' artifact declared below.
     implementation platform('androidx.compose:compose-bom:2026.08.00')
 
     // Compose UI toolkit (versions come from the BOM).
@@ -84,14 +74,25 @@ dependencies {
     implementation 'androidx.compose.ui:ui-graphics'
     implementation 'androidx.compose.ui:ui-tooling-preview'
 
-    // Material 3 design primitives.
-    implementation 'androidx.compose.material3:material3'
+    // Material 3 Expressive. Pinned ahead of the BOM: SegmentedListItem, ToggleButton,
+    // HorizontalFloatingToolbar and the flexible top app bars only exist in 1.5.0.
+    implementation 'androidx.compose.material3:material3:1.5.0-alpha22'
     implementation 'androidx.compose.material:material-icons-core'
+    implementation 'androidx.compose.material:material-icons-extended'
+    implementation 'com.materialkolor:material-kolor:1.7.0'
 
     // AndroidX core + the Activity <-> Compose bridge (setContent { ... }).
     implementation 'androidx.core:core-ktx:1.19.0'
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.11.0'
+    implementation 'androidx.lifecycle:lifecycle-runtime-compose:2.11.0'
     implementation 'androidx.activity:activity-compose:1.13.0'
+
+    // Holds the launch screen until the stored settings have been read, on every API level.
+    implementation 'androidx.core:core-splashscreen:1.2.0'
+    constraints {
+        // core-splashscreen asks for appcompat-resources 1.7.0; 1.7.1 is the build's own resolution.
+        implementation 'androidx.appcompat:appcompat-resources:1.7.1'
+    }
 
     // Debug-only tooling: Layout Inspector support and @Preview rendering.
     debugImplementation 'androidx.compose.ui:ui-tooling'
@@ -100,4 +101,7 @@ dependencies {
     implementation 'androidx.room:room-runtime:2.6.1'
     implementation 'androidx.room:room-ktx:2.6.1'
     ksp 'androidx.room:room-compiler:2.6.1'
+    
+    // DataStore
+    implementation 'androidx.datastore:datastore-preferences:1.1.1'
 }
