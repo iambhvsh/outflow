@@ -5,9 +5,12 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import java.io.IOException
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 
 enum class ThemeMode {
@@ -49,14 +52,22 @@ class PreferencesManager(private val context: Context) {
         val CURRENCY_KEY = stringPreferencesKey("currency")
     }
 
-    val options: Flow<Options> = context.dataStore.data.map { stored ->
-        Options(
-            themeMode = stored[THEME_MODE_KEY].orElse(ThemeMode.SYSTEM),
-            themeColor = stored[THEME_COLOR_KEY].orElse(ThemeColor.BLUE),
-            isDynamicColor = stored[IS_DYNAMIC_COLOR_KEY] ?: false,
-            currency = stored[CURRENCY_KEY].orElse(Currency.INR)
-        )
-    }
+    val options: Flow<Options> = context.dataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { stored ->
+            Options(
+                themeMode = stored[THEME_MODE_KEY].orElse(ThemeMode.SYSTEM),
+                themeColor = stored[THEME_COLOR_KEY].orElse(ThemeColor.BLUE),
+                isDynamicColor = stored[IS_DYNAMIC_COLOR_KEY] ?: false,
+                currency = stored[CURRENCY_KEY].orElse(Currency.INR)
+            )
+        }
 
     suspend fun saveThemeMode(mode: ThemeMode) {
         context.dataStore.edit { preferences ->

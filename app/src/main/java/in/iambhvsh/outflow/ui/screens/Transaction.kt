@@ -56,14 +56,17 @@ fun TransactionSheet(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var type by rememberSaveable(existing?.id) {
+    val sheetKey = remember(existing?.id) { existing?.id ?: System.currentTimeMillis() }
+    var type by rememberSaveable(sheetKey) {
         mutableStateOf(existing?.type ?: TransactionType.OUTFLOW)
     }
-    var amount by rememberSaveable(existing?.id) {
+    var amount by rememberSaveable(sheetKey) {
         mutableStateOf(existing?.amount?.let { trimZeros(it) } ?: "")
     }
-    var title by rememberSaveable(existing?.id) { mutableStateOf(existing?.title.orEmpty()) }
-    var category by rememberSaveable(existing?.id) {
+    var title by rememberSaveable(sheetKey) {
+        mutableStateOf(existing?.title.orEmpty())
+    }
+    var category by rememberSaveable(sheetKey) {
         mutableStateOf(Category.of(existing?.category))
     }
 
@@ -240,8 +243,8 @@ private fun TypeMenu(
 }
 
 
-private fun retype(category: Category, type: TransactionType): Category =
-    if (category.type == type) category else Category.of(type).first()
+internal fun retype(category: Category, type: TransactionType): Category =
+    if (category == Category.OTHER || category.type == type) category else Category.of(type).first()
 
 
 private fun sanitise(raw: String): String {

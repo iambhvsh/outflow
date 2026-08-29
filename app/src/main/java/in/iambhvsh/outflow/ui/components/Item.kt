@@ -69,6 +69,7 @@ fun TransactionItem(
     val threshold = SwipeToDismissBoxDefaults.positionalThreshold
     var showDialog by remember { mutableStateOf(false) }
     val density = LocalDensity.current
+    @Suppress("DEPRECATION")
     val state = remember {
         SwipeToDismissBoxState(
             initialValue = SwipeToDismissBoxValue.Settled,

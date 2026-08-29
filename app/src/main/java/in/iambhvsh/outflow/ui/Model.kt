@@ -116,10 +116,10 @@ class AppModel(application: Application) : AndroidViewModel(application) {
             .share(null)
 
 
-    /** This week's spending, day by day, with the days that had none left out. */
+    /** This week's spending, day by day for all 7 days of the week. */
     val week: StateFlow<List<Day>?> = flow {
         val start = startOfWeek(System.currentTimeMillis())
-        emitAll(dao.since(start).map { rows -> spread(start, rows).filter { it.transactions.isNotEmpty() } })
+        emitAll(dao.since(start).map { rows -> spread(start, rows) })
     }.share(null)
 
     /** This month's spending by category, largest first. */
