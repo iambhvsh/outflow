@@ -23,8 +23,8 @@ object OutflowShapes {
             bottomEnd = shapes.extraSmall.bottomEnd
         )
 
-    val middleItem: RoundedCornerShape
-        @Composable get() = RoundedCornerShape(shapes.extraSmall.topStart)
+    val middleItem: CornerBasedShape
+        @Composable get() = shapes.extraSmall
 
     val bottomItem: RoundedCornerShape
         @Composable get() = RoundedCornerShape(
@@ -54,7 +54,7 @@ object OutflowShapes {
 
     @Composable
     fun item(index: Int, count: Int): Shape = when {
-        count == 1 -> RoundedCornerShape(shapes.large.topStart)
+        count == 1 -> card
         index == 0 -> topItem
         index == count - 1 -> bottomItem
         else -> middleItem

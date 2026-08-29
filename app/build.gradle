@@ -104,4 +104,7 @@ dependencies {
     
     // DataStore
     implementation 'androidx.datastore:datastore-preferences:1.1.1'
+
+    // Unit testing
+    testImplementation 'junit:junit:4.13.2'
 }

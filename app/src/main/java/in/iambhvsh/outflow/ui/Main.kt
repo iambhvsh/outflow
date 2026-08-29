@@ -33,6 +33,7 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -76,7 +77,9 @@ class Main : ComponentActivity() {
         setContent {
             val saved by options.collectAsStateWithLifecycle()
             val settings = saved ?: return@setContent
-            currency = settings.currency
+            SideEffect {
+                currency = settings.currency
+            }
             OutflowTheme(
                 themeMode = settings.themeMode,
                 themeColor = settings.themeColor,
