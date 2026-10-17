@@ -81,6 +81,15 @@ class PreferencesManager(private val context: Context) {
             preferences[CURRENCY_KEY] = currency.name
         }
     }
+
+    suspend fun restoreOptions(options: Options) {
+        context.dataStore.edit { preferences ->
+            preferences[THEME_MODE_KEY] = options.themeMode.name
+            preferences[THEME_COLOR_KEY] = options.themeColor.name
+            preferences[IS_DYNAMIC_COLOR_KEY] = options.isDynamicColor
+            preferences[CURRENCY_KEY] = options.currency.name
+        }
+    }
 }
 
 /**

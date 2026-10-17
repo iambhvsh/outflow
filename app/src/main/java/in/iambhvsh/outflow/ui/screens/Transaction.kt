@@ -1,4 +1,4 @@
-@file:Suppress("OPT_IN_USAGE", "OPT_IN_USAGE_ERROR")
+@file:Suppress("FunctionName", "OPT_IN_USAGE", "OPT_IN_USAGE_ERROR")
 
 package `in`.iambhvsh.outflow.ui.screens
 
@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
@@ -17,6 +18,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material.icons.rounded.ArrowDropDown
 import androidx.compose.material.icons.rounded.ArrowUpward
+import androidx.compose.material.icons.rounded.CalendarToday
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -25,6 +29,7 @@ import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.ToggleButtonDefaults
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,9 +39,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+
 import `in`.iambhvsh.outflow.data.Category
 import `in`.iambhvsh.outflow.data.TransactionEntity
 import `in`.iambhvsh.outflow.data.TransactionType
@@ -46,7 +56,12 @@ import `in`.iambhvsh.outflow.ui.components.AppSheet
 import `in`.iambhvsh.outflow.ui.components.AppTextButton
 import `in`.iambhvsh.outflow.ui.theme.color
 import `in`.iambhvsh.outflow.ui.theme.flowColor
+import `in`.iambhvsh.outflow.ui.utils.atDate
 import `in`.iambhvsh.outflow.ui.utils.currency
+import `in`.iambhvsh.outflow.ui.utils.dateLabel
+import `in`.iambhvsh.outflow.ui.utils.daysAgo
+import `in`.iambhvsh.outflow.ui.utils.localToUtcDateMillis
+import `in`.iambhvsh.outflow.ui.utils.shiftDay
 
 
 @Composable
@@ -56,6 +71,7 @@ fun TransactionSheet(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val keyboard = LocalSoftwareKeyboardController.current
     var type by rememberSaveable(existing?.id) {
         mutableStateOf(existing?.type ?: TransactionType.OUTFLOW)
     }
@@ -66,6 +82,10 @@ fun TransactionSheet(
     var category by rememberSaveable(existing?.id) {
         mutableStateOf(Category.of(existing?.category))
     }
+    var timestamp by rememberSaveable(existing?.id) {
+        mutableStateOf(existing?.timestamp ?: System.currentTimeMillis())
+    }
+    var showDatePicker by remember { mutableStateOf(false) }
 
     val value = amount.toDoubleOrNull() ?: 0.0
 
@@ -88,7 +108,7 @@ fun TransactionSheet(
                         title = title.trim(),
                         amount = value,
                         category = category.name,
-                        timestamp = existing?.timestamp ?: System.currentTimeMillis(),
+                        timestamp = timestamp,
                         type = type
                     )
                 )
@@ -119,12 +139,88 @@ fun TransactionSheet(
         )
 
         Text(
+            text = "Date",
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            val days = daysAgo(timestamp)
+            val isToday = days == 0
+            val isYesterday = days == 1
+            val isCustom = !isToday && !isYesterday
+
+            ToggleButton(
+                checked = isToday,
+                onCheckedChange = {
+                    keyboard?.hide()
+                    timestamp = shiftDay(timestamp, targetDaysAgo = 0)
+                },
+                shapes = ToggleButtonDefaults.shapes(),
+                colors = ToggleButtonDefaults.toggleButtonColors(
+                    checkedContainerColor = MaterialTheme.colorScheme.primary,
+                    checkedContentColor = MaterialTheme.colorScheme.onPrimary
+                ),
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Today", maxLines = 1)
+            }
+
+            ToggleButton(
+                checked = isYesterday,
+                onCheckedChange = {
+                    keyboard?.hide()
+                    timestamp = shiftDay(timestamp, targetDaysAgo = 1)
+                },
+                shapes = ToggleButtonDefaults.shapes(),
+                colors = ToggleButtonDefaults.toggleButtonColors(
+                    checkedContainerColor = MaterialTheme.colorScheme.primary,
+                    checkedContentColor = MaterialTheme.colorScheme.onPrimary
+                ),
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Yesterday", maxLines = 1)
+            }
+
+            ToggleButton(
+                checked = isCustom,
+                onCheckedChange = {
+                    keyboard?.hide()
+                    showDatePicker = true
+                },
+                shapes = ToggleButtonDefaults.shapes(),
+                colors = ToggleButtonDefaults.toggleButtonColors(
+                    checkedContainerColor = MaterialTheme.colorScheme.primary,
+                    checkedContentColor = MaterialTheme.colorScheme.onPrimary
+                ),
+                modifier = Modifier.weight(1.3f)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.CalendarToday,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Text(
+                    text = if (isCustom) dateLabel(timestamp) else "Pick date",
+                    modifier = Modifier.padding(start = ToggleButtonDefaults.IconSpacing),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+
+        Text(
             text = "Category",
             style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.primary
         )
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(Category.of(type), key = { it.name }) { option ->
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Category.of(type).forEach { option ->
                 ToggleButton(
                     checked = option == category,
                     onCheckedChange = { category = option },
@@ -156,6 +252,34 @@ fun TransactionSheet(
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Cancel")
+        }
+    }
+
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = localToUtcDateMillis(timestamp)
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                AppTextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { pickedUtc ->
+                            timestamp = atDate(timestamp, pickedUtc)
+                        }
+                        showDatePicker = false
+                    }
+                ) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                AppTextButton(onClick = { showDatePicker = false }) {
+                    Text("Cancel")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
         }
     }
 }

@@ -58,4 +58,12 @@ interface TransactionDao {
 
     @Query("DELETE FROM outflows")
     fun clear(): Int
+
+    /** Every flow recorded in chronological order, for backup export. */
+    @Query("SELECT * FROM outflows ORDER BY timestamp ASC, id ASC")
+    fun all(): List<TransactionEntity>
+
+    /** Inserts multiple flows at once, for backup restore. */
+    @Insert
+    fun insertAll(transactions: List<TransactionEntity>): List<Long>
 }

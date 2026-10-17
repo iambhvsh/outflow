@@ -1,4 +1,4 @@
-@file:Suppress("OPT_IN_USAGE", "OPT_IN_USAGE_ERROR")
+@file:Suppress("FunctionName", "OPT_IN_USAGE", "OPT_IN_USAGE_ERROR")
 
 package `in`.iambhvsh.outflow.ui
 
@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -88,12 +87,6 @@ class Main : ComponentActivity() {
     }
 }
 
-/**
- * The whole app under one scaffold: a top bar that scrolls away, a floating toolbar fixed above the
- * navigation bar, and whichever destination is current in between. Only one [Scaffold] — a nested
- * second would apply the status bar inset twice.
- */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun App(model: AppModel) {
     var current by remember { mutableStateOf(Screen.HOME) }
@@ -102,6 +95,7 @@ private fun App(model: AppModel) {
     var sheetOpen by remember { mutableStateOf(false) }
 
     val deleted by model.deleted.collectAsStateWithLifecycle()
+    val message by model.message.collectAsStateWithLifecycle()
 
     val topBarScroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val snackbar = remember { SnackbarHostState() }
@@ -128,6 +122,15 @@ private fun App(model: AppModel) {
             withDismissAction = true
         )
         if (result == SnackbarResult.ActionPerformed) model.restore() else model.forget()
+    }
+
+    LaunchedEffect(message) {
+        val text = message ?: return@LaunchedEffect
+        snackbar.showSnackbar(
+            message = text,
+            withDismissAction = true
+        )
+        model.clearMessage()
     }
 
     Scaffold(

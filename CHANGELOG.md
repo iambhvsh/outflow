@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- Date selection in the new flow sheet: quick-pick Today or Yesterday, or choose any date from the calendar dialog.
+- Backup & Restore: export and import all recorded transactions, categories, and settings (theme, accent color, currency) to/from standard JSON files via Android Storage Access Framework (SAF).
+- Restore options to either completely replace or merge imported flows with existing ledger.
+
 ## [1.1.0] - 2026-08-25
 
 ### Added

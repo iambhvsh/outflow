@@ -10,6 +10,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
 import kotlin.math.abs
 import kotlin.math.round
 
@@ -100,7 +101,7 @@ fun plusDays(timestamp: Long, offset: Int): Long = calendar(startOfDay(timestamp
 
 fun daysAgo(timestamp: Long, now: Long = System.currentTimeMillis()): Int {
     val diff = startOfDay(now) - startOfDay(timestamp)
-    return Math.round(diff / 86_400_000.0).toInt()
+    return round(diff / 86_400_000.0).toInt()
 }
 
 private fun isThisYear(timestamp: Long): Boolean =
@@ -108,3 +109,43 @@ private fun isThisYear(timestamp: Long): Boolean =
 
 private fun calendar(timestamp: Long): Calendar =
     Calendar.getInstance().apply { timeInMillis = timestamp }
+
+/** Shifts [timestamp] to [targetDaysAgo] days ago, keeping the same hour, minute, second, and millisecond. */
+fun shiftDay(timestamp: Long, targetDaysAgo: Int): Long {
+    val targetDayStart = plusDays(startOfDay(System.currentTimeMillis()), -targetDaysAgo)
+    val cal = Calendar.getInstance().apply { timeInMillis = timestamp }
+    return Calendar.getInstance().apply {
+        timeInMillis = targetDayStart
+        set(Calendar.HOUR_OF_DAY, cal.get(Calendar.HOUR_OF_DAY))
+        set(Calendar.MINUTE, cal.get(Calendar.MINUTE))
+        set(Calendar.SECOND, cal.get(Calendar.SECOND))
+        set(Calendar.MILLISECOND, cal.get(Calendar.MILLISECOND))
+    }.timeInMillis
+}
+
+/** Updates the year, month, and day of [originalTimestamp] to match [utcDateMillis], keeping the local time of day. */
+fun atDate(originalTimestamp: Long, utcDateMillis: Long): Long {
+    val utcCal = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
+        timeInMillis = utcDateMillis
+    }
+    val cal = Calendar.getInstance().apply { timeInMillis = originalTimestamp }
+    return Calendar.getInstance().apply {
+        timeInMillis = originalTimestamp
+        set(Calendar.YEAR, utcCal.get(Calendar.YEAR))
+        set(Calendar.MONTH, utcCal.get(Calendar.MONTH))
+        set(Calendar.DAY_OF_MONTH, utcCal.get(Calendar.DAY_OF_MONTH))
+        set(Calendar.HOUR_OF_DAY, cal.get(Calendar.HOUR_OF_DAY))
+        set(Calendar.MINUTE, cal.get(Calendar.MINUTE))
+        set(Calendar.SECOND, cal.get(Calendar.SECOND))
+        set(Calendar.MILLISECOND, cal.get(Calendar.MILLISECOND))
+    }.timeInMillis
+}
+
+/** Converts a local timestamp's date (year, month, day) to UTC midnight millis for DatePickerState. */
+fun localToUtcDateMillis(localTimestamp: Long): Long {
+    val cal = Calendar.getInstance().apply { timeInMillis = localTimestamp }
+    return Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
+        clear()
+        set(cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH))
+    }.timeInMillis
+}

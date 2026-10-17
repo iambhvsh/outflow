@@ -6,6 +6,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import `in`.iambhvsh.outflow.data.AppDatabase
+import `in`.iambhvsh.outflow.data.BackupData
 import `in`.iambhvsh.outflow.data.Category
 import `in`.iambhvsh.outflow.data.Currency
 import `in`.iambhvsh.outflow.data.Options
@@ -35,6 +36,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** How many flows the list loads at a time. */
 private const val Page = 80
@@ -196,6 +198,40 @@ class AppModel(application: Application) : AndroidViewModel(application) {
     fun clear() {
         viewModelScope.launch(Dispatchers.IO) { dao.clear() }
         reach.value = Page
+    }
+
+    private val _message = MutableStateFlow<String?>(null)
+    val message: StateFlow<String?> = _message.asStateFlow()
+
+    fun postMessage(text: String) {
+        _message.value = text
+    }
+
+    fun clearMessage() {
+        _message.value = null
+    }
+
+    suspend fun createBackupData(): BackupData = withContext(Dispatchers.IO) {
+        val currentOptions = options.value ?: Options()
+        val allRows = dao.all()
+        BackupData(
+            options = currentOptions,
+            transactions = allRows
+        )
+    }
+
+    fun restoreBackup(data: BackupData, replaceExisting: Boolean, onComplete: () -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            if (replaceExisting) {
+                dao.clear()
+            }
+            dao.insertAll(data.transactions)
+            preferences.restoreOptions(data.options)
+            reach.value = Page
+            withContext(Dispatchers.Main) {
+                onComplete()
+            }
+        }
     }
 }
 
