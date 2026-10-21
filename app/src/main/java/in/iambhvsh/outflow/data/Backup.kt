@@ -12,7 +12,8 @@ data class BackupData(
     val version: Int = 1,
     val exportedAt: Long = System.currentTimeMillis(),
     val options: Options,
-    val transactions: List<TransactionEntity>
+    val transactions: List<TransactionEntity>,
+    val budgets: List<BudgetEntity> = emptyList()
 ) {
     fun toJson(): String {
         val root = JSONObject()
@@ -25,6 +26,7 @@ data class BackupData(
         settingsObj.put("themeColor", options.themeColor.name)
         settingsObj.put("isDynamicColor", options.isDynamicColor)
         settingsObj.put("currency", options.currency.name)
+        settingsObj.put("isAutoSmsTracking", options.isAutoSmsTracking)
         root.put("settings", settingsObj)
 
         val transactionsArr = JSONArray()
@@ -38,6 +40,15 @@ data class BackupData(
             transactionsArr.put(itemObj)
         }
         root.put("transactions", transactionsArr)
+
+        val budgetsArr = JSONArray()
+        for ((category, limit) in budgets) {
+            val bObj = JSONObject()
+            bObj.put("category", category)
+            bObj.put("limit", limit)
+            budgetsArr.put(bObj)
+        }
+        root.put("budgets", budgetsArr)
 
         return root.toString(2)
     }
@@ -59,7 +70,8 @@ data class BackupData(
                 isDynamicColor = settingsObj?.optBoolean("isDynamicColor", false) ?: false,
                 currency = settingsObj?.optString("currency")?.let { raw ->
                     runCatching { Currency.valueOf(raw) }.getOrNull()
-                } ?: Currency.INR
+                } ?: Currency.INR,
+                isAutoSmsTracking = settingsObj?.optBoolean("isAutoSmsTracking", false) ?: false
             )
 
             val transactionsArr = root.optJSONArray("transactions") ?: JSONArray()
@@ -86,11 +98,23 @@ data class BackupData(
                 }
             }
 
+            val budgetsArr = root.optJSONArray("budgets") ?: JSONArray()
+            val budgetList = mutableListOf<BudgetEntity>()
+            for (i in 0 until budgetsArr.length()) {
+                val bObj = budgetsArr.getJSONObject(i)
+                val cat = bObj.optString("category", "")
+                val limit = bObj.optDouble("limit", 0.0)
+                if (cat.isNotBlank() && limit > 0.0) {
+                    budgetList.add(BudgetEntity(category = cat, limit = limit))
+                }
+            }
+
             return BackupData(
                 version = version,
                 exportedAt = exportedAt,
                 options = options,
-                transactions = list
+                transactions = list,
+                budgets = budgetList
             )
         }
     }

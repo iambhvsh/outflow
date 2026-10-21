@@ -7,7 +7,6 @@ import androidx.room.Query
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
-/** Every read the app makes. The list is windowed and everything else is added up in SQL. */
 @Dao
 interface TransactionDao {
 
@@ -20,19 +19,15 @@ interface TransactionDao {
     @Delete
     fun delete(transaction: TransactionEntity): Int
 
-    /** The newest [limit] flows. `id` breaks ties so flows saved in the same millisecond hold order. */
     @Query("SELECT * FROM outflows ORDER BY timestamp DESC, id DESC LIMIT :limit")
     fun window(limit: Int): Flow<List<TransactionEntity>>
 
-    /** Everything from [from] onwards, newest first — a week or a month, never the whole ledger. */
     @Query("SELECT * FROM outflows WHERE timestamp >= :from ORDER BY timestamp DESC, id DESC")
     fun since(from: Long): Flow<List<TransactionEntity>>
 
-    /** How many flows are recorded. */
     @Query("SELECT COUNT(*) FROM outflows")
     fun count(): Flow<Int>
 
-    /** What the flows from [from] onwards add up to. Pass `0` for the whole ledger. */
     @Query(
         """
         SELECT
@@ -44,7 +39,6 @@ interface TransactionDao {
     )
     fun totals(from: Long): Flow<Totals>
 
-    /** Spending per category from [from] onwards, largest first. */
     @Query(
         """
         SELECT category AS category, SUM(amount) AS amount, COUNT(*) AS count
@@ -59,11 +53,19 @@ interface TransactionDao {
     @Query("DELETE FROM outflows")
     fun clear(): Int
 
-    /** Every flow recorded in chronological order, for backup export. */
     @Query("SELECT * FROM outflows ORDER BY timestamp ASC, id ASC")
     fun all(): List<TransactionEntity>
 
-    /** Inserts multiple flows at once, for backup restore. */
     @Insert
     fun insertAll(transactions: List<TransactionEntity>): List<Long>
+
+    @Query(
+        """
+        SELECT COUNT(*) FROM outflows
+        WHERE title = :title
+          AND ABS(amount - :amount) < 0.005
+          AND timestamp BETWEEN :from AND :to
+        """
+    )
+    fun countSimilar(title: String, amount: Double, from: Long, to: Long): Int
 }

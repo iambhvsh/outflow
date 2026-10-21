@@ -2,13 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [1.2.0] - 2026-10-22
 
 ### Added
 
-- Date selection in the new flow sheet: quick-pick Today or Yesterday, or choose any date from the calendar dialog.
-- Backup & Restore: export and import all recorded transactions, categories, and settings (theme, accent color, currency) to/from standard JSON files via Android Storage Access Framework (SAF).
-- Restore options to either completely replace or merge imported flows with existing ledger.
+- Real-time Bank and UPI SMS Tracking: automatically detect and log incoming transaction alerts on-device with instant notifications and duplicate detection.
+- Import from Messages: scan recent inbox SMS to import past bank and UPI transactions.
+- Category Monthly Budgets: dedicated page for setting and adjusting monthly spending targets for each outflow category, with quick-preset chips and progress bars.
+- Real-time budget progress in Insights with animated pacing bars, remaining allowances, and overspending indicators.
+- Material 3 Expressive Shapes and Motion: distinct expressive geometry for each category (cookie, clover, pill, puffy diamond, arch, flower, gem, sunny) with fluid spring physics.
+- Expressive Pill Cards: redesigned Inflow and Outflow summary cards with responsive spring state transitions.
+- Dedicated Appearance page in Settings for theme mode, dynamic wallpaper-based accent colors, and custom palette options.
+- Date selection in the flow sheet: quick-pick Today or Yesterday, or choose any date from the calendar dialog.
+- Backup and Restore: export and import all recorded transactions, categories, budgets, and settings via Android Storage Access Framework (SAF) with replace or merge options.
+- Redesigned About screen: refined Apple-inspired layout showcasing Outflow's origin from Xpense, native architecture, Antigravity AI, and REA.
 
 ## [1.1.0] - 2026-08-25
 

@@ -49,7 +49,12 @@ android {
             versionNameSuffix '-debug'
         }
         release {
-            signingConfig = signingConfigs.release
+            def keystorePropertiesFile = rootProject.file("secrets/keystore.properties")
+            if (keystorePropertiesFile.canRead()) {
+                signingConfig = signingConfigs.release
+            } else {
+                signingConfig = signingConfigs.debug
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
@@ -108,4 +113,6 @@ dependencies {
     
     // DataStore
     implementation 'androidx.datastore:datastore-preferences:1.1.1'
+
+    testImplementation 'junit:junit:4.13.2'
 }

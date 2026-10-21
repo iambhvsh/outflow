@@ -19,11 +19,6 @@ import androidx.compose.material.icons.rounded.Tv
 import androidx.compose.material.icons.rounded.Work
 import androidx.compose.ui.graphics.vector.ImageVector
 
-/**
- * The fixed set of buckets a transaction can fall into, stored as the enum [name] in the text column
- * the table already had, so anything an older build wrote falls back to [OTHER] via [of]. [hue] is an
- * angle rather than a finished colour, since tone and chroma are the theme's business.
- */
 enum class Category(
     val label: String,
     val icon: ImageVector,
@@ -52,11 +47,9 @@ enum class Category(
 
     companion object {
 
-        /** The categories offered for a given [type], with [OTHER] always last. */
         fun of(type: TransactionType): List<Category> =
             entries.filter { it.type == type && it != OTHER } + OTHER
 
-        /** Resolves a stored value, tolerating both the enum name and the human label. */
         fun of(raw: String?): Category {
             if (raw.isNullOrBlank()) return OTHER
             return entries.firstOrNull { it.name.equals(raw, ignoreCase = true) }

@@ -1,4 +1,4 @@
-@file:Suppress("OPT_IN_USAGE", "OPT_IN_USAGE_ERROR")
+@file:Suppress("FunctionName", "OPT_IN_USAGE", "OPT_IN_USAGE_ERROR")
 
 package `in`.iambhvsh.outflow.ui.components
 
@@ -21,8 +21,10 @@ import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PlainTooltip
+import androidx.compose.material3.toShape
 import androidx.compose.material3.Text
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.ToggleButtonDefaults
@@ -112,7 +114,10 @@ fun AppNavigation(
         FilledIconButton(
             onClick = onAdd,
             modifier = Modifier.size(56.dp),
-            shape = CircleShape,
+            shapes = IconButtonDefaults.shapes(
+                shape = MaterialShapes.Cookie4Sided.toShape(),
+                pressedShape = MaterialShapes.PuffyDiamond.toShape()
+            ),
             colors = IconButtonDefaults.filledIconButtonColors(
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary

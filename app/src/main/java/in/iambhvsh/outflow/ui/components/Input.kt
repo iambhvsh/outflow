@@ -1,4 +1,4 @@
-@file:Suppress("OPT_IN_USAGE", "OPT_IN_USAGE_ERROR")
+@file:Suppress("FunctionName", "OPT_IN_USAGE", "OPT_IN_USAGE_ERROR")
 
 package `in`.iambhvsh.outflow.ui.components
 
@@ -17,11 +17,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.delay
 
 /** How long to keep re-asking for the keyboard after a field takes focus, and how often. */
 private const val KeyboardHolds = 3
-private const val KeyboardHoldDelay = 80L
+private val KeyboardHoldDelay = 80.milliseconds
 
 /**
  * The one text field shape the app uses. Each field re-asserts the keyboard while it holds focus:

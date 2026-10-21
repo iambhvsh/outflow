@@ -7,10 +7,13 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import `in`.iambhvsh.outflow.data.AppDatabase
 import `in`.iambhvsh.outflow.data.BackupData
+import `in`.iambhvsh.outflow.data.BudgetEntity
+import `in`.iambhvsh.outflow.data.BudgetProgress
 import `in`.iambhvsh.outflow.data.Category
 import `in`.iambhvsh.outflow.data.Currency
 import `in`.iambhvsh.outflow.data.Options
 import `in`.iambhvsh.outflow.data.PreferencesManager
+import `in`.iambhvsh.outflow.data.Reader
 import `in`.iambhvsh.outflow.data.ThemeColor
 import `in`.iambhvsh.outflow.data.ThemeMode
 import `in`.iambhvsh.outflow.data.Totals
@@ -70,14 +73,10 @@ private fun List<TransactionEntity>.summarise(): Summary {
 
 private val Totals.summary: Summary get() = Summary(inflow, outflow)
 
-/**
- * The whole app's state, and none of it the whole ledger: every figure is one SQLite worked out
- * against an index, and the only rows loaded are the page on screen and the week the chart draws.
- * Every figure starts as null rather than zero, so a screen shows a loader instead of guessing.
- */
 class AppModel(application: Application) : AndroidViewModel(application) {
 
     private val dao = AppDatabase.getDatabase(application).transactionDao()
+    private val budgetDao = AppDatabase.getDatabase(application).budgetDao()
     private val preferences = PreferencesManager(application)
 
     /** How far back the list currently reaches. Widened by [expand] as it is scrolled. */
@@ -136,6 +135,25 @@ class AppModel(application: Application) : AndroidViewModel(application) {
             }
             .share(null)
 
+    /** Category budgets with current month-to-date spending progress. */
+    val budgets: StateFlow<List<BudgetProgress>?> = combine(
+        budgetDao.all(),
+        opening(dao::splits) { startOfMonth(System.currentTimeMillis()) }
+    ) { budgetList, splits ->
+        val spentByCategory = splits.groupBy { Category.of(it.category) }
+            .mapValues { (_, rows) -> rows.sumOf { it.amount } }
+
+        budgetList.map { entity ->
+            val cat = Category.of(entity.category)
+            val spent = spentByCategory[cat] ?: 0.0
+            BudgetProgress(
+                category = cat,
+                limit = entity.limit,
+                spent = spent
+            )
+        }.sortedByDescending { it.ratio }
+    }.share(null)
+
     /** The stored settings, null until the first read lands. Eager, since the launch screen waits on it. */
     val options: StateFlow<Options?> = preferences.options.stateIn(
         scope = viewModelScope,
@@ -170,6 +188,10 @@ class AppModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch { preferences.saveCurrency(currency) }
     }
 
+    fun saveIsAutoSmsTracking(enabled: Boolean) {
+        viewModelScope.launch { preferences.saveIsAutoSmsTracking(enabled) }
+    }
+
     /** Inserts when [transaction] has no id yet, updates otherwise. */
     fun save(transaction: TransactionEntity) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -196,8 +218,23 @@ class AppModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun clear() {
-        viewModelScope.launch(Dispatchers.IO) { dao.clear() }
+        viewModelScope.launch(Dispatchers.IO) {
+            dao.clear()
+            budgetDao.clear()
+        }
         reach.value = Page
+    }
+
+    fun saveBudget(category: Category, limit: Double) {
+        viewModelScope.launch(Dispatchers.IO) {
+            budgetDao.setBudget(BudgetEntity(category = category.name, limit = limit))
+        }
+    }
+
+    fun deleteBudget(category: Category) {
+        viewModelScope.launch(Dispatchers.IO) {
+            budgetDao.deleteByCategory(category.name)
+        }
     }
 
     private val _message = MutableStateFlow<String?>(null)
@@ -211,12 +248,46 @@ class AppModel(application: Application) : AndroidViewModel(application) {
         _message.value = null
     }
 
+    fun scanRecentSms(onResult: (importedCount: Int) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val context = getApplication<Application>()
+            val parsedList = Reader.scanRecentBankSms(context)
+            var imported = 0
+            val windowMs = 2 * 60 * 60 * 1000L
+            for ((title, amount, category, type, timestamp) in parsedList.sortedBy { it.timestamp }) {
+                val duplicates = dao.countSimilar(
+                    title = title,
+                    amount = amount,
+                    from = timestamp - windowMs,
+                    to = timestamp + windowMs
+                )
+                if (duplicates == 0) {
+                    dao.insert(
+                        TransactionEntity(
+                            title = title,
+                            amount = amount,
+                            category = category.name,
+                            timestamp = timestamp,
+                            type = type
+                        )
+                    )
+                    imported++
+                }
+            }
+            withContext(Dispatchers.Main) {
+                onResult(imported)
+            }
+        }
+    }
+
     suspend fun createBackupData(): BackupData = withContext(Dispatchers.IO) {
         val currentOptions = options.value ?: Options()
         val allRows = dao.all()
+        val allBudgets = budgetDao.allSync()
         BackupData(
             options = currentOptions,
-            transactions = allRows
+            transactions = allRows,
+            budgets = allBudgets
         )
     }
 
@@ -224,8 +295,12 @@ class AppModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.IO) {
             if (replaceExisting) {
                 dao.clear()
+                budgetDao.clear()
             }
             dao.insertAll(data.transactions)
+            if (data.budgets.isNotEmpty()) {
+                budgetDao.insertAll(data.budgets)
+            }
             preferences.restoreOptions(data.options)
             reach.value = Page
             withContext(Dispatchers.Main) {

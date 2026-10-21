@@ -2,6 +2,8 @@
 
 package `in`.iambhvsh.outflow.ui.screens
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -17,10 +19,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.FileDownload
 import androidx.compose.material.icons.rounded.FileUpload
+import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.PieChart
+import androidx.compose.material.icons.rounded.Sms
+import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.core.content.ContextCompat
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -39,20 +46,14 @@ import `in`.iambhvsh.outflow.ui.AppModel
 import `in`.iambhvsh.outflow.ui.components.AppHeading
 import `in`.iambhvsh.outflow.ui.components.AppItem
 import `in`.iambhvsh.outflow.ui.components.AppTextButton
-import `in`.iambhvsh.outflow.ui.components.ColorPicker
 import `in`.iambhvsh.outflow.ui.components.CurrencyPicker
-import `in`.iambhvsh.outflow.ui.components.ThemePicker
 import `in`.iambhvsh.outflow.ui.theme.OutflowColors
 import `in`.iambhvsh.outflow.ui.theme.OutflowShapes
 import `in`.iambhvsh.outflow.ui.utils.dateLabel
-import `in`.iambhvsh.outflow.ui.utils.tally
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlinx.coroutines.launch
-
-
-private val hasDynamicColor: Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
 
 
 @Composable
@@ -60,6 +61,8 @@ fun Settings(
     model: AppModel,
     padding: PaddingValues,
     onAbout: () -> Unit,
+    onBudgets: () -> Unit,
+    onAppearance: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -96,7 +99,85 @@ fun Settings(
         }
     }
 
-    val appearance = if (hasDynamicColor) 3 else 2
+    val smsPermissionsToRequest = remember {
+        buildList {
+            add(Manifest.permission.RECEIVE_SMS)
+            add(Manifest.permission.READ_SMS)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                add(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }.toTypedArray()
+    }
+
+    val smsPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { result ->
+        val receiveGranted = result[Manifest.permission.RECEIVE_SMS] == true
+        val readGranted = result[Manifest.permission.READ_SMS] == true
+        if (receiveGranted || readGranted) {
+            model.saveIsAutoSmsTracking(true)
+            model.postMessage("Bank SMS auto-tracking enabled")
+        } else {
+            model.saveIsAutoSmsTracking(false)
+            model.postMessage("SMS permission required to track bank transactions")
+        }
+    }
+
+    val scanPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            model.postMessage("Scanning messages...")
+            model.scanRecentSms { imported ->
+                model.postMessage(
+                    when (imported) {
+                        0 -> "No new transactions found"
+                        1 -> "Imported 1 transaction from messages"
+                        else -> "Imported $imported transactions from messages"
+                    }
+                )
+            }
+        } else {
+            model.postMessage("SMS permission required to scan messages")
+        }
+    }
+
+    val toggleSmsTracking: (Boolean) -> Unit = { enabled ->
+        if (enabled) {
+            val hasReceive = ContextCompat.checkSelfPermission(context, Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED
+            val hasNotification = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+            } else true
+
+            if (hasReceive && hasNotification) {
+                model.saveIsAutoSmsTracking(true)
+                model.postMessage("Bank SMS auto-tracking enabled")
+            } else {
+                smsPermissionLauncher.launch(smsPermissionsToRequest)
+            }
+        } else {
+            model.saveIsAutoSmsTracking(false)
+            model.postMessage("Bank SMS auto-tracking turned off")
+        }
+    }
+
+    val triggerScan: () -> Unit = {
+        val hasRead = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED
+        if (hasRead) {
+            model.postMessage("Scanning messages...")
+            model.scanRecentSms { imported ->
+                model.postMessage(
+                    when (imported) {
+                        0 -> "No new transactions found"
+                        1 -> "Imported 1 transaction from messages"
+                        else -> "Imported $imported transactions from messages"
+                    }
+                )
+            }
+        } else {
+            scanPermissionLauncher.launch(Manifest.permission.READ_SMS)
+        }
+    }
 
     LazyColumn(
         modifier = modifier
@@ -107,39 +188,14 @@ fun Settings(
         verticalArrangement = Arrangement.spacedBy(OutflowShapes.Gap)
     ) {
         item(key = "appearance-heading") { AppHeading("Appearance") }
-        item(key = "theme") {
-            ThemePicker(
-                selected = options.themeMode,
-                onSelect = { model.saveThemeMode(it) },
+        item(key = "appearance") {
+            AppItem(
+                title = "Appearance",
                 index = 0,
-                count = appearance
-            )
-        }
-        if (hasDynamicColor) {
-            item(key = "dynamic") {
-                AppItem(
-                    title = "Dynamic colour",
-                    index = 1,
-                    count = appearance,
-                    description = "Take the accent from your wallpaper",
-                    onClick = { model.saveIsDynamicColor(!options.isDynamicColor) },
-                    trailing = {
-                        Switch(
-                            checked = options.isDynamicColor,
-                            onCheckedChange = { model.saveIsDynamicColor(it) },
-                            colors = OutflowColors.switch
-                        )
-                    }
-                )
-            }
-        }
-        item(key = "accent") {
-            ColorPicker(
-                selected = options.themeColor,
-                enabled = !options.isDynamicColor,
-                onSelect = { model.saveThemeColor(it) },
-                index = appearance - 1,
-                count = appearance
+                count = 1,
+                icon = Icons.Rounded.Palette,
+                description = "Theme, dynamic colour and accent",
+                onClick = onAppearance
             )
         }
 
@@ -149,7 +205,45 @@ fun Settings(
                 selected = options.currency,
                 onSelect = { model.saveCurrency(it) },
                 index = 0,
-                count = 1
+                count = 2
+            )
+        }
+        item(key = "budgets") {
+            AppItem(
+                title = "Budgets",
+                index = 1,
+                count = 2,
+                icon = Icons.Rounded.PieChart,
+                description = "Set monthly spending limits for categories",
+                onClick = onBudgets
+            )
+        }
+
+        item(key = "automation-heading") { AppHeading("Automation") }
+        item(key = "sms-auto-track") {
+            AppItem(
+                title = "Auto-track bank SMS",
+                index = 0,
+                count = 2,
+                icon = Icons.Rounded.Sms,
+                description = "Automatically log incoming bank and UPI transactions",
+                trailing = {
+                    Switch(
+                        checked = options.isAutoSmsTracking,
+                        onCheckedChange = toggleSmsTracking
+                    )
+                },
+                onClick = { toggleSmsTracking(!options.isAutoSmsTracking) }
+            )
+        }
+        item(key = "sms-scan") {
+            AppItem(
+                title = "Import from messages",
+                index = 1,
+                count = 2,
+                icon = Icons.Rounded.Sync,
+                description = "Scan your inbox to import past bank and UPI transactions",
+                onClick = triggerScan
             )
         }
 
@@ -160,11 +254,7 @@ fun Settings(
                 index = 0,
                 count = 3,
                 icon = Icons.Rounded.FileUpload,
-                description = if (count == 0) {
-                    "Save your preferences"
-                } else {
-                    "Save a copy of your ${tally(count)} flows and preferences"
-                },
+                description = "Save a copy of your flows and preferences",
                 onClick = {
                     scope.launch {
                         val backup = model.createBackupData()
@@ -196,7 +286,7 @@ fun Settings(
                 description = if (count == 0) {
                     "Nothing recorded yet"
                 } else {
-                    "Removes all ${tally(count)} flows for good"
+                    "Removes all flows for good"
                 },
                 onClick = { if (count > 0) confirming = true }
             )
@@ -218,7 +308,7 @@ fun Settings(
         AlertDialog(
             onDismissRequest = { confirming = false },
             title = { Text("Delete everything?") },
-            text = { Text("All ${tally(count)} flows will be removed. This cannot be undone.") },
+            text = { Text("All flows will be removed. This cannot be undone.") },
             shape = MaterialTheme.shapes.extraLarge,
             confirmButton = {
                 AppTextButton(
@@ -240,13 +330,12 @@ fun Settings(
 
     val restoreData = pendingRestoreData
     if (restoreData != null) {
-        val backupCount = restoreData.transactions.size
         AlertDialog(
             onDismissRequest = { pendingRestoreData = null },
             title = { Text("Restore Data?") },
             text = {
                 Text(
-                    "This backup includes ${tally(backupCount)} flows and preferences from ${dateLabel(restoreData.exportedAt)}.\n\n" +
+                    "This backup includes flows and preferences from ${dateLabel(restoreData.exportedAt)}.\n\n" +
                         "Choose 'Replace' to overwrite your current ledger, or 'Merge' to combine with existing flows."
                 )
             },
@@ -255,7 +344,7 @@ fun Settings(
                 AppTextButton(
                     onClick = {
                         model.restoreBackup(restoreData, replaceExisting = true) {
-                            model.postMessage("Restored ${tally(backupCount)} flows and preferences")
+                            model.postMessage("Restored flows and preferences")
                         }
                         pendingRestoreData = null
                     }
@@ -268,7 +357,7 @@ fun Settings(
                     AppTextButton(
                         onClick = {
                             model.restoreBackup(restoreData, replaceExisting = false) {
-                                model.postMessage("Merged ${tally(backupCount)} flows")
+                                model.postMessage("Merged flows")
                             }
                             pendingRestoreData = null
                         }

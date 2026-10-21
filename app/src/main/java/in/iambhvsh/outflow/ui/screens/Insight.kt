@@ -1,19 +1,29 @@
-@file:Suppress("OPT_IN_USAGE", "OPT_IN_USAGE_ERROR")
+@file:Suppress("FunctionName", "OPT_IN_USAGE", "OPT_IN_USAGE_ERROR")
 
 package `in`.iambhvsh.outflow.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material.icons.rounded.Insights
+import androidx.compose.material.icons.rounded.PieChart
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,15 +31,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import `in`.iambhvsh.outflow.data.BudgetProgress
 import `in`.iambhvsh.outflow.ui.AppModel
 import `in`.iambhvsh.outflow.ui.Slice
+import `in`.iambhvsh.outflow.ui.components.AppButton
 import `in`.iambhvsh.outflow.ui.components.AppCard
 import `in`.iambhvsh.outflow.ui.components.AppEmpty
 import `in`.iambhvsh.outflow.ui.components.AppHeading
 import `in`.iambhvsh.outflow.ui.components.AppItem
 import `in`.iambhvsh.outflow.ui.components.AppLoader
+import `in`.iambhvsh.outflow.ui.components.AppTextButton
 import `in`.iambhvsh.outflow.ui.components.AppTile
 import `in`.iambhvsh.outflow.ui.components.BarLegend
+import `in`.iambhvsh.outflow.ui.components.BudgetItem
 import `in`.iambhvsh.outflow.ui.components.DayChart
 import `in`.iambhvsh.outflow.ui.components.Segment
 import `in`.iambhvsh.outflow.ui.components.StackedBar
@@ -53,16 +67,18 @@ private val FigureBaseline = 5.2.dp
 fun Insight(
     model: AppModel,
     padding: PaddingValues,
+    onManageBudgets: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val today = model.today.collectAsStateWithLifecycle().value
     val week = model.week.collectAsStateWithLifecycle().value
     val slices = model.slices.collectAsStateWithLifecycle().value
+    val budgets = model.budgets.collectAsStateWithLifecycle().value
     val lifetime = model.lifetime.collectAsStateWithLifecycle().value
     val count = model.count.collectAsStateWithLifecycle().value
 
 
-    if (today == null || week == null || slices == null || lifetime == null || count == null) {
+    if (today == null || week == null || slices == null || budgets == null || lifetime == null || count == null) {
         AppLoader(modifier = modifier.background(OutflowColors.group).padding(padding))
         return
     }
@@ -75,11 +91,24 @@ fun Insight(
                 .padding(padding),
             contentAlignment = Alignment.Center
         ) {
-            AppEmpty(
-                title = "Nothing to read yet",
-                description = "Insights show up once you have a few flows to compare — charts, category splits and totals.",
-                icon = Icons.Rounded.Insights
-            )
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.padding(horizontal = 24.dp)
+            ) {
+                AppEmpty(
+                    title = "Nothing to read yet",
+                    description = "Insights show up once you have a few flows to compare: charts, category splits and totals.",
+                    icon = Icons.Rounded.Insights
+                )
+                AppButton(
+                    onClick = onManageBudgets
+                ) {
+                    Icon(Icons.Rounded.PieChart, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Set monthly budgets")
+                }
+            }
         }
         return
     }
@@ -100,14 +129,16 @@ fun Insight(
                     label = "Came in",
                     container = MaterialTheme.colorScheme.primaryContainer,
                     content = MaterialTheme.colorScheme.onPrimaryContainer,
-                    icon = Icons.Rounded.ArrowDownward
+                    icon = Icons.Rounded.ArrowDownward,
+                    shape = RoundedCornerShape(percent = 50)
                 )
                 AppTile(
                     value = compact(today.outflow),
                     label = "Went out",
                     container = MaterialTheme.colorScheme.tertiaryContainer,
                     content = MaterialTheme.colorScheme.onTertiaryContainer,
-                    icon = Icons.Rounded.ArrowUpward
+                    icon = Icons.Rounded.ArrowUpward,
+                    shape = RoundedCornerShape(percent = 50)
                 )
             }
         }
@@ -149,6 +180,49 @@ fun Insight(
                     StackedBar(segments = segments)
                     BarLegend(segments = segments)
                 }
+            }
+        }
+
+        item(key = "budgets-heading") {
+            AppHeading(
+                text = "Monthly budgets",
+                trailing = {
+                    IconButton(onClick = onManageBudgets) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
+                            contentDescription = "Manage budgets",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            )
+        }
+        if (budgets.isEmpty()) {
+            item(key = "budgets-empty") {
+                AppCard(index = 0, count = 1) {
+                    Text(
+                        text = "No category budgets set for this month.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    AppTextButton(
+                        onClick = onManageBudgets
+                    ) {
+                        Text("Set a budget")
+                    }
+                }
+            }
+        } else {
+            itemsIndexed(
+                items = budgets,
+                key = { _, item -> item.category.name }
+            ) { index, item ->
+                BudgetItem(
+                    budget = item,
+                    index = index,
+                    count = budgets.size,
+                    onClick = onManageBudgets
+                )
             }
         }
 

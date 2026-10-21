@@ -1,8 +1,9 @@
-@file:Suppress("OPT_IN_USAGE", "OPT_IN_USAGE_ERROR")
+@file:Suppress("FunctionName", "OPT_IN_USAGE", "OPT_IN_USAGE_ERROR")
 
 package `in`.iambhvsh.outflow.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -17,8 +18,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material.icons.rounded.Savings
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.snapshotFlow
@@ -48,13 +51,8 @@ import `in`.iambhvsh.outflow.ui.utils.money
 import `in`.iambhvsh.outflow.ui.utils.signed
 import kotlinx.coroutines.flow.distinctUntilChanged
 
-/** How many rows from the end of the loaded list the next page is fetched at. */
 private const val Reach = 24
 
-/**
- * The balance, the month at a glance, then every flow grouped by the day it happened on. The list
- * holds a page of the ledger and fetches the next well before the end of the current one is in view.
- */
 @Composable
 fun Home(
     model: AppModel,
@@ -102,14 +100,16 @@ fun Home(
                     label = "Came in",
                     container = MaterialTheme.colorScheme.primaryContainer,
                     content = MaterialTheme.colorScheme.onPrimaryContainer,
-                    icon = Icons.Rounded.ArrowDownward
+                    icon = Icons.Rounded.ArrowDownward,
+                    shape = RoundedCornerShape(percent = 50)
                 )
                 AppTile(
                     value = compact(month.outflow),
                     label = "Went out",
                     container = MaterialTheme.colorScheme.tertiaryContainer,
                     content = MaterialTheme.colorScheme.onTertiaryContainer,
-                    icon = Icons.Rounded.ArrowUpward
+                    icon = Icons.Rounded.ArrowUpward,
+                    shape = RoundedCornerShape(percent = 50)
                 )
             }
         }

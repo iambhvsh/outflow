@@ -3,15 +3,18 @@
 package `in`.iambhvsh.outflow.ui.screens
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -19,33 +22,44 @@ import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material.icons.rounded.ArrowDropDown
 import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material.icons.rounded.CalendarToday
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuDefaults
+import androidx.compose.material3.SplitButtonDefaults
+import androidx.compose.material3.SplitButtonLayout
 import androidx.compose.material3.Text
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 
 import `in`.iambhvsh.outflow.data.Category
 import `in`.iambhvsh.outflow.data.TransactionEntity
@@ -54,8 +68,11 @@ import `in`.iambhvsh.outflow.ui.components.AppButton
 import `in`.iambhvsh.outflow.ui.components.AppInput
 import `in`.iambhvsh.outflow.ui.components.AppSheet
 import `in`.iambhvsh.outflow.ui.components.AppTextButton
+import `in`.iambhvsh.outflow.ui.theme.OutflowColors
 import `in`.iambhvsh.outflow.ui.theme.color
+import `in`.iambhvsh.outflow.ui.theme.container
 import `in`.iambhvsh.outflow.ui.theme.flowColor
+import `in`.iambhvsh.outflow.ui.theme.shape
 import `in`.iambhvsh.outflow.ui.utils.atDate
 import `in`.iambhvsh.outflow.ui.utils.currency
 import `in`.iambhvsh.outflow.ui.utils.dateLabel
@@ -80,10 +97,10 @@ fun TransactionSheet(
     }
     var title by rememberSaveable(existing?.id) { mutableStateOf(existing?.title.orEmpty()) }
     var category by rememberSaveable(existing?.id) {
-        mutableStateOf(Category.of(existing?.category))
+        mutableStateOf(existing?.let { Category.of(it.category) } ?: Category.of(type).first())
     }
     var timestamp by rememberSaveable(existing?.id) {
-        mutableStateOf(existing?.timestamp ?: System.currentTimeMillis())
+        mutableLongStateOf(existing?.timestamp ?: System.currentTimeMillis())
     }
     var showDatePicker by remember { mutableStateOf(false) }
 
@@ -145,7 +162,7 @@ fun TransactionSheet(
         )
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
         ) {
             val days = daysAgo(timestamp)
             val isToday = days == 0
@@ -158,7 +175,7 @@ fun TransactionSheet(
                     keyboard?.hide()
                     timestamp = shiftDay(timestamp, targetDaysAgo = 0)
                 },
-                shapes = ToggleButtonDefaults.shapes(),
+                shapes = ButtonGroupDefaults.connectedLeadingButtonShapes(),
                 colors = ToggleButtonDefaults.toggleButtonColors(
                     checkedContainerColor = MaterialTheme.colorScheme.primary,
                     checkedContentColor = MaterialTheme.colorScheme.onPrimary
@@ -174,7 +191,7 @@ fun TransactionSheet(
                     keyboard?.hide()
                     timestamp = shiftDay(timestamp, targetDaysAgo = 1)
                 },
-                shapes = ToggleButtonDefaults.shapes(),
+                shapes = ButtonGroupDefaults.connectedMiddleButtonShapes(),
                 colors = ToggleButtonDefaults.toggleButtonColors(
                     checkedContainerColor = MaterialTheme.colorScheme.primary,
                     checkedContentColor = MaterialTheme.colorScheme.onPrimary
@@ -190,7 +207,7 @@ fun TransactionSheet(
                     keyboard?.hide()
                     showDatePicker = true
                 },
-                shapes = ToggleButtonDefaults.shapes(),
+                shapes = ButtonGroupDefaults.connectedTrailingButtonShapes(),
                 colors = ToggleButtonDefaults.toggleButtonColors(
                     checkedContainerColor = MaterialTheme.colorScheme.primary,
                     checkedContentColor = MaterialTheme.colorScheme.onPrimary
@@ -216,21 +233,49 @@ fun TransactionSheet(
             style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.primary
         )
-        Row(
-            modifier = Modifier.horizontalScroll(rememberScrollState()),
+
+        val categories = remember(type) { Category.of(type) }
+        val categoryListState = rememberLazyListState()
+
+        LaunchedEffect(category, type) {
+            val idx = categories.indexOf(category)
+            if (idx >= 0) {
+                categoryListState.animateScrollToItem(idx)
+            }
+        }
+
+        LazyRow(
+            state = categoryListState,
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Category.of(type).forEach { option ->
+            items(categories, key = { it.name }) { option ->
+                val selected = option == category
                 ToggleButton(
-                    checked = option == category,
+                    checked = selected,
                     onCheckedChange = { category = option },
                     shapes = ToggleButtonDefaults.shapes(),
                     colors = ToggleButtonDefaults.toggleButtonColors(
+                        containerColor = OutflowColors.row,
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         checkedContainerColor = option.color,
-                        checkedContentColor = MaterialTheme.colorScheme.surface
+                        checkedContentColor = if (OutflowColors.isDark) Color(0xFF141218) else Color.White
                     )
                 ) {
-                    Icon(option.icon, contentDescription = null)
+                    Box(
+                        modifier = Modifier
+                            .size(24.dp)
+                            .clip(option.shape)
+                            .background(if (selected) Color.White.copy(alpha = 0.22f) else option.container),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = option.icon,
+                            contentDescription = null,
+                            tint = if (selected) LocalContentColor.current else option.color,
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
                     Text(
                         text = option.label,
                         modifier = Modifier.padding(start = ToggleButtonDefaults.IconSpacing)
@@ -309,32 +354,53 @@ private fun TypeMenu(
     )
 
     Box(modifier = modifier) {
-        ToggleButton(
-            checked = expanded,
-            onCheckedChange = { expanded = it },
-            shapes = ToggleButtonDefaults.shapes(),
-            colors = ToggleButtonDefaults.toggleButtonColors(
-                containerColor = accent.copy(alpha = 0.16f),
-                contentColor = accent,
-                checkedContainerColor = accent,
-                checkedContentColor = MaterialTheme.colorScheme.surface
-            ),
-            contentPadding = PaddingValues(start = 16.dp, end = 8.dp)
-        ) {
-            Text(
-                text = type.label,
-                style = MaterialTheme.typography.labelLarge,
-                maxLines = 1
-            )
-            Icon(
-                imageVector = Icons.Rounded.ArrowDropDown,
-                contentDescription = "Change direction",
-                modifier = Modifier
-                    .padding(start = 2.dp)
-                    .size(20.dp)
-                    .rotate(turn)
-            )
-        }
+        SplitButtonLayout(
+            leadingButton = {
+                SplitButtonDefaults.LeadingButton(
+                    onClick = {
+                        val next = if (type == TransactionType.INFLOW) TransactionType.OUTFLOW else TransactionType.INFLOW
+                        onSelect(next)
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = accent.copy(alpha = 0.16f),
+                        contentColor = accent
+                    )
+                ) {
+                    Icon(
+                        imageVector = type.icon,
+                        contentDescription = null,
+                        modifier = Modifier.size(SplitButtonDefaults.LeadingIconSize)
+                    )
+                    Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                    Text(
+                        text = type.label,
+                        style = MaterialTheme.typography.labelLarge,
+                        maxLines = 1
+                    )
+                }
+            },
+            trailingButton = {
+                SplitButtonDefaults.TrailingButton(
+                    checked = expanded,
+                    onCheckedChange = { expanded = it },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = accent.copy(alpha = 0.16f),
+                        contentColor = accent
+                    ),
+                    modifier = Modifier.semantics {
+                        stateDescription = if (expanded) "Expanded" else "Collapsed"
+                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.ArrowDropDown,
+                        contentDescription = "Change direction",
+                        modifier = Modifier
+                            .size(SplitButtonDefaults.TrailingIconSize)
+                            .graphicsLayer { rotationZ = turn }
+                    )
+                }
+            }
+        )
 
         DropdownMenu(
             expanded = expanded,

@@ -1,4 +1,4 @@
-@file:Suppress("OPT_IN_USAGE", "OPT_IN_USAGE_ERROR")
+@file:Suppress("FunctionName", "OPT_IN_USAGE", "OPT_IN_USAGE_ERROR")
 
 package `in`.iambhvsh.outflow.ui.components
 
@@ -33,11 +33,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import `in`.iambhvsh.outflow.ui.theme.HeroFont
 import `in`.iambhvsh.outflow.ui.theme.OutflowColors
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /** How long the sheet holds its height after the keyboard reports itself gone. */
-private const val KeyboardSettle = 250L
+private val KeyboardSettle = 250.milliseconds
 
 /**
  * The one modal sheet shape the app uses: a hero title with an optional control beside it, then

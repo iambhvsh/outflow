@@ -18,7 +18,6 @@ enum class ThemeColor {
     RED, BLUE, GREEN, YELLOW, ORANGE, PURPLE, PINK, TEAL
 }
 
-/** The currencies figures can be printed in, in the order the picker offers them. */
 enum class Currency(val symbol: String, val label: String) {
     INR("₹", "Indian rupee"),
     USD("$", "US dollar"),
@@ -26,20 +25,16 @@ enum class Currency(val symbol: String, val label: String) {
     YEN("¥", "Japanese yen")
 }
 
-/** Everything the app remembers between launches. */
 data class Options(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val themeColor: ThemeColor = ThemeColor.BLUE,
     val isDynamicColor: Boolean = false,
-    val currency: Currency = Currency.INR
+    val currency: Currency = Currency.INR,
+    val isAutoSmsTracking: Boolean = false
 )
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
-/**
- * The stored settings, read as one flow of one object rather than a flow per setting: nothing can be
- * drawn until the first read off disk lands, and one value means one arrival and one frame.
- */
 class PreferencesManager(private val context: Context) {
 
     companion object {
@@ -47,6 +42,7 @@ class PreferencesManager(private val context: Context) {
         val THEME_COLOR_KEY = stringPreferencesKey("theme_color")
         val IS_DYNAMIC_COLOR_KEY = booleanPreferencesKey("is_dynamic_color")
         val CURRENCY_KEY = stringPreferencesKey("currency")
+        val IS_AUTO_SMS_TRACKING_KEY = booleanPreferencesKey("is_auto_sms_tracking")
     }
 
     val options: Flow<Options> = context.dataStore.data.map { stored ->
@@ -54,7 +50,8 @@ class PreferencesManager(private val context: Context) {
             themeMode = stored[THEME_MODE_KEY].orElse(ThemeMode.SYSTEM),
             themeColor = stored[THEME_COLOR_KEY].orElse(ThemeColor.BLUE),
             isDynamicColor = stored[IS_DYNAMIC_COLOR_KEY] ?: false,
-            currency = stored[CURRENCY_KEY].orElse(Currency.INR)
+            currency = stored[CURRENCY_KEY].orElse(Currency.INR),
+            isAutoSmsTracking = stored[IS_AUTO_SMS_TRACKING_KEY] ?: false
         )
     }
 
@@ -82,19 +79,22 @@ class PreferencesManager(private val context: Context) {
         }
     }
 
+    suspend fun saveIsAutoSmsTracking(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[IS_AUTO_SMS_TRACKING_KEY] = enabled
+        }
+    }
+
     suspend fun restoreOptions(options: Options) {
         context.dataStore.edit { preferences ->
             preferences[THEME_MODE_KEY] = options.themeMode.name
             preferences[THEME_COLOR_KEY] = options.themeColor.name
             preferences[IS_DYNAMIC_COLOR_KEY] = options.isDynamicColor
             preferences[CURRENCY_KEY] = options.currency.name
+            preferences[IS_AUTO_SMS_TRACKING_KEY] = options.isAutoSmsTracking
         }
     }
 }
 
-/**
- * Reads a stored enum name, falling back to [fallback] for anything missing or unrecognised, so a
- * value written by a build with more options than this one reverts rather than crashing.
- */
 private inline fun <reified T : Enum<T>> String?.orElse(fallback: T): T =
     this?.let { stored -> enumValues<T>().firstOrNull { it.name == stored } } ?: fallback

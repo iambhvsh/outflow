@@ -1,7 +1,8 @@
-@file:Suppress("FunctionName", "OPT_IN_USAGE", "OPT_IN_USAGE_ERROR")
+@file:Suppress("FunctionName", "OPT_IN_USAGE", "OPT_IN_USAGE_ERROR", "DEPRECATION")
 
 package `in`.iambhvsh.outflow.ui
 
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -46,6 +47,8 @@ import `in`.iambhvsh.outflow.data.TransactionEntity
 import `in`.iambhvsh.outflow.ui.components.AppNavigation
 import `in`.iambhvsh.outflow.ui.components.AppToolbar
 import `in`.iambhvsh.outflow.ui.screens.About
+import `in`.iambhvsh.outflow.ui.screens.Appearance
+import `in`.iambhvsh.outflow.ui.screens.Budget
 import `in`.iambhvsh.outflow.ui.screens.Home
 import `in`.iambhvsh.outflow.ui.screens.Insight
 import `in`.iambhvsh.outflow.ui.screens.Settings
@@ -65,7 +68,14 @@ class Main : ComponentActivity() {
      */
     override fun onCreate(savedInstanceState: Bundle?) {
         val launch = installSplashScreen()
-        enableEdgeToEdge()
+        enableEdgeToEdge(
+            statusBarStyle = androidx.activity.SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = androidx.activity.SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+        )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isNavigationBarContrastEnforced = false
+            window.isStatusBarContrastEnforced = false
+        }
         super.onCreate(savedInstanceState)
 
 
@@ -75,7 +85,9 @@ class Main : ComponentActivity() {
         setContent {
             val saved by options.collectAsStateWithLifecycle()
             val settings = saved ?: return@setContent
-            currency = settings.currency
+            if (currency != settings.currency) {
+                currency = settings.currency
+            }
             OutflowTheme(
                 themeMode = settings.themeMode,
                 themeColor = settings.themeColor,
@@ -91,6 +103,8 @@ class Main : ComponentActivity() {
 private fun App(model: AppModel) {
     var current by remember { mutableStateOf(Screen.HOME) }
     var about by remember { mutableStateOf(false) }
+    var appearance by remember { mutableStateOf(false) }
+    var budgets by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<TransactionEntity?>(null) }
     var sheetOpen by remember { mutableStateOf(false) }
 
@@ -104,12 +118,17 @@ private fun App(model: AppModel) {
     val systemBars = WindowInsets.systemBars.asPaddingValues()
     val cutout = WindowInsets.displayCutout.asPaddingValues()
 
-    BackHandler(enabled = about || current != Screen.HOME) {
-        if (about) about = false else current = Screen.HOME
+    BackHandler(enabled = about || appearance || budgets || current != Screen.HOME) {
+        when {
+            about -> about = false
+            appearance -> appearance = false
+            budgets -> budgets = false
+            else -> current = Screen.HOME
+        }
     }
 
 
-    LaunchedEffect(current, about) {
+    LaunchedEffect(current, about, appearance, budgets) {
         topBarScroll.state.heightOffset = 0f
         topBarScroll.state.contentOffset = 0f
     }
@@ -139,17 +158,23 @@ private fun App(model: AppModel) {
             .nestedScroll(topBarScroll.nestedScrollConnection),
         topBar = {
             AppToolbar(
-                title = if (about) {
-                    "About"
-                } else {
-                    when (current) {
+                title = when {
+                    about -> "About"
+                    appearance -> "Appearance"
+                    budgets -> "Budgets"
+                    else -> when (current) {
                         Screen.HOME -> "Outflow"
                         Screen.INSIGHT -> "Insights"
                         Screen.SETTINGS -> "Settings"
                     }
                 },
                 scrollBehavior = topBarScroll,
-                onBack = if (about) ({ about = false }) else null
+                onBack = when {
+                    about -> ({ about = false })
+                    appearance -> ({ appearance = false })
+                    budgets -> ({ budgets = false })
+                    else -> null
+                }
             )
         },
         bottomBar = {
@@ -166,6 +191,8 @@ private fun App(model: AppModel) {
                     current = current,
                     onSelect = {
                         about = false
+                        appearance = false
+                        budgets = false
                         current = it
                     },
                     onAdd = {
@@ -185,34 +212,58 @@ private fun App(model: AppModel) {
     ) { padding ->
         val content = screenPadding(padding)
         AnimatedContent(
-            targetState = current,
-            transitionSpec = { slide(targetState.ordinal > initialState.ordinal) },
-            label = "Destination"
-        ) { screen ->
-            when (screen) {
-                Screen.HOME -> Home(
+            targetState = budgets,
+            transitionSpec = { slide(targetState) },
+            label = "Budgets"
+        ) { inBudgets ->
+            if (inBudgets) {
+                Budget(
                     model = model,
-                    padding = content,
-                    onEdit = {
-                        editing = it
-                        sheetOpen = true
-                    }
+                    padding = content
                 )
-
-                Screen.INSIGHT -> Insight(model = model, padding = content)
-                Screen.SETTINGS -> AnimatedContent(
-                    targetState = about,
-                    transitionSpec = { slide(targetState) },
-                    label = "About"
-                ) { open ->
-                    if (open) {
-                        About(padding = content)
-                    } else {
-                        Settings(
+            } else {
+                AnimatedContent(
+                    targetState = current,
+                    transitionSpec = { slide(targetState.ordinal > initialState.ordinal) },
+                    label = "Destination"
+                ) { screen ->
+                    when (screen) {
+                        Screen.HOME -> Home(
                             model = model,
                             padding = content,
-                            onAbout = { about = true }
+                            onEdit = {
+                                editing = it
+                                sheetOpen = true
+                            }
                         )
+
+                        Screen.INSIGHT -> Insight(
+                            model = model,
+                            padding = content,
+                            onManageBudgets = { budgets = true }
+                        )
+
+                        Screen.SETTINGS -> AnimatedContent(
+                            targetState = when {
+                                about -> 1
+                                appearance -> 2
+                                else -> 0
+                            },
+                            transitionSpec = { slide(targetState > initialState) },
+                            label = "SettingsSubpage"
+                        ) { page ->
+                            when (page) {
+                                1 -> About(padding = content)
+                                2 -> Appearance(model = model, padding = content)
+                                else -> Settings(
+                                    model = model,
+                                    padding = content,
+                                    onAbout = { about = true },
+                                    onBudgets = { budgets = true },
+                                    onAppearance = { appearance = true }
+                                )
+                            }
+                        }
                     }
                 }
             }

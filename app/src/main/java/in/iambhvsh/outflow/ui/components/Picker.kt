@@ -1,4 +1,4 @@
-@file:Suppress("OPT_IN_USAGE", "OPT_IN_USAGE_ERROR")
+@file:Suppress("FunctionName", "OPT_IN_USAGE", "OPT_IN_USAGE_ERROR")
 
 package `in`.iambhvsh.outflow.ui.components
 
@@ -19,12 +19,15 @@ import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Contrast
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.LightMode
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.FilledIconToggleButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.toShape
 import androidx.compose.material3.ToggleButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -51,11 +54,6 @@ private val ThemeMode.icon: ImageVector
         ThemeMode.OLED -> Icons.Rounded.Contrast
     }
 
-/**
- * The four theme modes as one connected button group, icon-only since the current mode is named on the
- * line above. Both pickers are [AppCard]s rather than list items, which measure their slots with
- * intrinsics and cannot hold a scrolling child.
- */
 @Composable
 fun ThemePicker(
     selected: ThemeMode,
@@ -93,10 +91,6 @@ fun ThemePicker(
     }
 }
 
-/**
- * The four currencies as one connected button group, each button its own symbol — which is what every
- * figure in the app is prefixed with. The full name of the current pick sits on the line above.
- */
 @Composable
 fun CurrencyPicker(
     selected: Currency,
@@ -137,10 +131,6 @@ fun CurrencyPicker(
     }
 }
 
-/**
- * The accent seeds as a scrolling row of swatches, dimmed and inert while dynamic colour is on. The
- * row bleeds to the card's trailing edge, so a cut-off swatch says there is more to drag into view.
- */
 @Composable
 fun ColorPicker(
     selected: ThemeColor,
@@ -160,7 +150,11 @@ fun ColorPicker(
                     checked = color == selected,
                     onCheckedChange = { if (color != selected) onSelect(color) },
                     enabled = enabled,
-                    shapes = IconButtonDefaults.toggleableShapes(),
+                    shapes = IconButtonDefaults.toggleableShapes(
+                        shape = CircleShape,
+                        checkedShape = MaterialShapes.Cookie4Sided.toShape(),
+                        pressedShape = MaterialShapes.PuffyDiamond.toShape()
+                    ),
                     colors = IconButtonDefaults.filledIconToggleButtonColors(
                         containerColor = color.seed,
                         contentColor = color.seed,

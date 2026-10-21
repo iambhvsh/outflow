@@ -1,4 +1,4 @@
-@file:Suppress("OPT_IN_USAGE", "OPT_IN_USAGE_ERROR")
+@file:Suppress("FunctionName", "OPT_IN_USAGE", "OPT_IN_USAGE_ERROR", "DEPRECATION")
 
 package `in`.iambhvsh.outflow.ui.components
 
@@ -43,16 +43,10 @@ import `in`.iambhvsh.outflow.ui.theme.OutflowShapes
 import `in`.iambhvsh.outflow.ui.theme.color
 import `in`.iambhvsh.outflow.ui.theme.container
 import `in`.iambhvsh.outflow.ui.theme.flowColor
+import `in`.iambhvsh.outflow.ui.theme.shape
 import `in`.iambhvsh.outflow.ui.utils.signed
 import `in`.iambhvsh.outflow.ui.utils.timeLabel
 
-/**
- * One transaction as a row of a group: tap to edit, swipe left to delete. The avatar carries the
- * category's colour and the amount the direction; [index] and [count] round only the outer corners.
- *
- * The dismiss state is a plain [remember], not the saveable `rememberSwipeToDismissBoxState`: a lazy
- * list keeps a departed key's state, so an undone delete would come back dismissed and delete itself.
- */
 @Composable
 fun TransactionItem(
     transaction: TransactionEntity,
@@ -140,7 +134,7 @@ fun TransactionItem(
                 Box(
                     modifier = Modifier
                         .size(40.dp)
-                        .clip(MaterialTheme.shapes.medium)
+                        .clip(category.shape)
                         .background(category.container),
                     contentAlignment = Alignment.Center
                 ) {

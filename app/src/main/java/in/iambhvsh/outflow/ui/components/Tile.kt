@@ -1,8 +1,9 @@
-@file:Suppress("OPT_IN_USAGE", "OPT_IN_USAGE_ERROR")
+@file:Suppress("FunctionName", "OPT_IN_USAGE", "OPT_IN_USAGE_ERROR")
 
 package `in`.iambhvsh.outflow.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,18 +20,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-/** How far apart tiles sit. Wider than the 2dp a group's rows use — see [TileRow]. */
 private val TileGap = 8.dp
 
-/**
- * Two or three tiles across, sharing the row evenly. Tiles are separate cards rather than rows of one
- * group, so they sit further apart than 2dp, where the two would read as one slab split by a hairline.
- */
 @Composable
 fun TileRow(
     modifier: Modifier = Modifier,
@@ -44,10 +41,6 @@ fun TileRow(
     }
 }
 
-/**
- * A single figure with its label, on a filled slab. The figure shrinks to fit rather than wrapping, so
- * a tile stays legible whether it holds `$8` or `$128,400.75`.
- */
 @Composable
 fun RowScope.AppTile(
     value: String,
@@ -55,14 +48,16 @@ fun RowScope.AppTile(
     container: Color,
     content: Color,
     modifier: Modifier = Modifier,
-    icon: ImageVector? = null
+    icon: ImageVector? = null,
+    shape: Shape? = null
 ) {
+    val tileShape = shape ?: RoundedCornerShape(percent = 50)
     Column(
         modifier = modifier
             .weight(1f)
-            .clip(MaterialTheme.shapes.largeIncreased)
+            .clip(tileShape)
             .background(container)
-            .padding(horizontal = 20.dp, vertical = 18.dp),
+            .padding(horizontal = 22.dp, vertical = 18.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
         Text(

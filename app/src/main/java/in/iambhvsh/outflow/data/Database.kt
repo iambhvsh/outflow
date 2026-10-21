@@ -7,16 +7,12 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [TransactionEntity::class], version = 2, exportSchema = true)
+@Database(entities = [TransactionEntity::class, BudgetEntity::class], version = 3, exportSchema = true)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun transactionDao(): TransactionDao
+    abstract fun budgetDao(): BudgetDao
 
     companion object {
-
-        /**
-         * Version 2 adds the two indices the reads in [TransactionDao] go through. No column changes
-         * and no table rebuild, so an existing ledger is left exactly as it was.
-         */
         private val Indices = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
@@ -30,6 +26,17 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val BudgetsTable = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `budgets` (" +
+                        "`category` TEXT NOT NULL, " +
+                        "`limit` REAL NOT NULL, " +
+                        "PRIMARY KEY(`category`))"
+                )
+            }
+        }
+
         @Volatile
         private var INSTANCE: AppDatabase? = null
         fun getDatabase(context: Context): AppDatabase {
@@ -38,7 +45,7 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "outflow_database"
-                ).addMigrations(Indices).build()
+                ).addMigrations(Indices, BudgetsTable).build()
                 INSTANCE = instance
                 instance
             }
